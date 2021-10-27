@@ -1,0 +1,10 @@
+.idea/
+.DS_Store
+node_modules/
+package-lock.json
+
+data/*
+!data/sample.csv
+
+output/*
+!output/sample.csv
