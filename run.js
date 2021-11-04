@@ -12,7 +12,7 @@ const urlStatusCode = require('url-status-code')
 const parse = require('csv-parse/lib/sync');
 const msg = require('./msg-helper'),
   dal = require('./dal')
-  excelManager = require('./excel-manager');
+excelManager = require('./excel-manager');
 
 const http = followRedirects.http;
 const https = followRedirects.https;
@@ -28,9 +28,11 @@ if (!dataCSVFile) {
   msg.yellow('Using data File ' + dataCSVFile);
 }
 
-const outputCSVFile = 'output/' + path.basename(dataCSVFile).replace('.csv', '-output.csv');
-const outputExcelFile = 'output/' + path.basename(dataCSVFile).replace('.csv', '-output.xlsx');
-msg.yellow('Output CSV will be exported to ' + outputCSVFile);
+const outputFolder = 'output/' + path.basename(dataCSVFile).replace('.csv', '') + '/';
+if (!fs.existsSync(outputFolder)) {
+  fs.mkdirSync(outputFolder, { recursive: true });
+}
+msg.yellow('Output will be exported to ' + outputFolder);
 
 const chunk = (arr, size) =>
   Array.from({
@@ -43,8 +45,7 @@ const getData = () => {
 
   const data = [];
   const dataFile = {
-    output: outputCSVFile,
-    outputExcel: outputExcelFile,
+    output: outputFolder,
     path: dataCSVFile,
     data: parse(fs.readFileSync(dataCSVFile))
   };
@@ -75,7 +76,7 @@ const getURL = (urlStr) => {
     onHTTPS: false,
     clupsNotMigrated: false,
     wwwMigrated: false,
-    clubMigrated: false,
+    clubMigrated: true,
     lowerCaseRedirect: false,
     canonicalURL: '',
     valid: false,
@@ -92,7 +93,10 @@ const getURL = (urlStr) => {
         data = Buffer.concat(body).toString();
 
         const $ = cheerio.load(data);
-        result.type = options.path.indexOf('globalassets') === -1 ? result.type : 'ASSET';
+        if (options.path.indexOf('globalassets') !== -1 || options.path.indexOf('contentassets') !== -1) {
+          result.type = 'ASSET';
+        }
+
 
         const isSoft404 = $('body').html().toLowerCase().indexOf("can't be found") !== -1 ||
           $('body').html().toLowerCase().indexOf("page not found") !== -1;
@@ -114,11 +118,8 @@ const getURL = (urlStr) => {
         result.longRedirect = result.redirects.length > 4 ? true : false;
         result.clupsNotMigrated = finalURL.indexOf('clup.') !== -1;
         result.wwwMigrated = finalURL.indexOf('www.') !== -1;
-        if (options.host === 'www.clubcorp.com' && options.path.indexOf('/clubs/' === -1)) {
-          result.clubMigrated = true;
-        }
-        else if (finalURL.indexOf('/clubs/') !== -1) {
-          result.clubMigrated = true;
+        if ((options.host === 'club.clubcorp.com' || options.host.indexOf('club.com') !== -1) && finalURL.indexOf('/clubs/') === -1) {
+          result.clubMigrated = false;
         }
 
         result.onHTTPS = finalURL.indexOf('https:') !== -1;
@@ -142,6 +143,10 @@ const getURL = (urlStr) => {
         url: urlStr,
         status: 200
       });
+      result.wwwMigrated = urlStr.indexOf('www.') !== -1;
+      result.onHTTPS = urlStr.indexOf('https:') !== -1;
+      result.lowerCaseRedirect = options.path === options.path.toLocaleLowerCase();
+
       if (err.message.toLowerCase().indexOf('maximum number of redirects exceeded') !== -1) {
         result.infiniteRedirect = true;
         result.longRedirect = true;
@@ -200,7 +205,7 @@ const getSortedStatusCodesBasedOnInput = async (urls) => {
 const exportFileDataToExcel = (file) => {
   excelManager.init();
   excelManager.writeData(file.statusCodes);
-  excelManager.flush(file.outputExcel);
+  excelManager.flush(file.output);
 };
 const start = async (done) => {
   const files = getData();
@@ -213,7 +218,7 @@ const start = async (done) => {
   }
 };
 
-(async function() {
+(async function () {
   await start();
 })().then(v => {
   msg.green('Finished..');

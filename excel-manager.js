@@ -1,31 +1,43 @@
 const excel = require('excel4node'),
   msg = require('./msg-helper');
-let workbook;
+let workbooks;
 let worksheets = {};
 let style = null;
 module.exports.init = () => {
   msg.yellow('Initiating excel file creation');
-  workbook = new excel.Workbook();
+  workbooks = {
+    main: new excel.Workbook(),
+    notOnHTTPS: new excel.Workbook(),
+    notWWW: new excel.Workbook(),
+    notClubsMigrated: new excel.Workbook(),
+    urls400s: new excel.Workbook(),
+    urls500s: new excel.Workbook(),
+    redirectURLs: new excel.Workbook(),
+    irURLs: new excel.Workbook(),
+    lrURLs: new excel.Workbook(),
+    flcURLs: new excel.Workbook(),
+    noCanonicalURLs: new excel.Workbook()
+  }
 
-  // Add Worksheets to the workbook
+  // Add Worksheets to the workbooks
   worksheets = {
-    summary: workbook.addWorksheet('Summary'),
-    allURLs: workbook.addWorksheet('All URLs'),
-    htmlURLs: workbook.addWorksheet('HTML URLs'),
-    vanityURLs: workbook.addWorksheet('Vanity URLs'),
-    notOnHTTPS: workbook.addWorksheet('Not HTTPS'),
-    notWWW: workbook.addWorksheet('Not WWW'),
-    notClubsMigrated: workbook.addWorksheet('Not Clubs Migrated'),
-    urls400s: workbook.addWorksheet('400s HTML URLs'),
-    urls500s: workbook.addWorksheet('500s HTML URLs'),
-    redirectURLs: workbook.addWorksheet('Redirects'),
-    irURLs: workbook.addWorksheet('Infinite Redirects'),
-    lrURLs: workbook.addWorksheet('Long Redirects Chain'),
-    flcURLs: workbook.addWorksheet('Failing Lower Case Redirect'),
-    noCanonicalURLs: workbook.addWorksheet('No Canonical')
+    summary: workbooks.main.addWorksheet('Summary'),
+    allURLs: workbooks.main.addWorksheet('All URLs'),
+    htmlURLs: workbooks.main.addWorksheet('HTML URLs'),
+    vanityURLs: workbooks.main.addWorksheet('Vanity URLs'),
+    notOnHTTPS: workbooks.notOnHTTPS.addWorksheet('Not HTTPS'),
+    notWWW: workbooks.notWWW.addWorksheet('Not WWW'),
+    notClubsMigrated: workbooks.notClubsMigrated.addWorksheet('Not Clubs Migrated'),
+    urls400s: workbooks.urls400s.addWorksheet('400s HTML URLs'),
+    urls500s: workbooks.urls500s.addWorksheet('500s HTML URLs'),
+    redirectURLs: workbooks.redirectURLs.addWorksheet('Redirects'),
+    irURLs: workbooks.irURLs.addWorksheet('Infinite Redirects'),
+    lrURLs: workbooks.lrURLs.addWorksheet('Long Redirects Chain'),
+    flcURLs: workbooks.flcURLs.addWorksheet('Failing Lower Case Redirect'),
+    noCanonicalURLs: workbooks.noCanonicalURLs.addWorksheet('No Canonical')
   };
 
-  style = workbook.createStyle({
+  style = workbooks.main.createStyle({
     font: {
       color: '#000000',
       size: 12,
@@ -136,6 +148,9 @@ module.exports.writeData = (rows) => {
       return statusCode.meta.canonical === '';
     });
     urls[index].notClubsMigrated = urls[index].htmlURLs.filter((statusCode) => {
+      const firstRedirect = statusCode.redirects[0].url;
+      const finalURL = statusCode.redirects[statusCode.redirects.length - 1].url;
+      
       return !statusCode.clubMigrated;
     });
   }
@@ -177,6 +192,18 @@ module.exports.writeData = (rows) => {
 };
 
 module.exports.flush = (path) => {
-  workbook.write(path);
-  msg.green('Excel file was created successfully: ' + path);
+  const d = new Date();
+  const fileSuffix = 'Audit-' + (d.getMonth() + 1) + '-' + d.getDate() + '-' + d.getFullYear() + '.xlsx';
+  workbooks.main.write(path + 'Summary ' + fileSuffix);
+  workbooks.urls400s.write(path + '400s URLs ' + fileSuffix);
+  workbooks.urls500s.write(path + '500 URLs ' + fileSuffix);
+  workbooks.redirectURLs.write(path + 'Redirects ' + fileSuffix);
+  workbooks.lrURLs.write(path + 'Long Redirects ' + fileSuffix);
+  workbooks.irURLs.write(path + 'Infinite Redirects ' + fileSuffix);
+  workbooks.notOnHTTPS.write(path + 'HTTPS ' + fileSuffix);
+  workbooks.notWWW.write(path + 'WWW ' + fileSuffix);
+  workbooks.flcURLs.write(path + 'Failing Lower Case Redirect ' + fileSuffix);
+  workbooks.noCanonicalURLs.write(path + 'Without Canonical ' + fileSuffix);
+  workbooks.notClubsMigrated.write(path + 'Not Migrated to Clubs ' + fileSuffix);
+  msg.green('Excel files were created successfully: ' + path);
 };

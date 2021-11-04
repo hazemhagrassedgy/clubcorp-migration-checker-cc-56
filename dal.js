@@ -30,14 +30,17 @@ async function getURLEvents(dbURL) {
     const events = await models.ClubCorpEvent.find({ url: dbURL._id }).populate('url').sort([['created', -1]]);
     return events ? events : [];
 }
+const getDateWithOffset = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    d.setHours(0);
+    d.setSeconds(0);
+    d.setMinutes(0);
+    return d;
+}
 async function getURLRecentEvents(dbURL) {
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    yesterdayDate.setHours(0);
-    yesterdayDate.setSeconds(0);
-    yesterdayDate.setMinutes(0);
-
-    const events = await models.ClubCorpEvent.find({ url: dbURL._id, created: { $gt: yesterdayDate } }).populate('url').sort([['created', -1]]);
+    const todayDate = getDateWithOffset(0);
+    const events = await models.ClubCorpEvent.find({ url: dbURL._id, created: { $gte: todayDate} }).populate('url').sort([['created', -1]]);
     return events ? events : [];
 }
 
