@@ -1,15 +1,31 @@
 const msg = require('./msg-helper'),
-    models = require('./mongo-models');
+    models = require('./mongo-models',)
+urlParser = require('url');
 
 async function createURLIfNotExists(url) {
+    const options = urlParser.parse(encodeURI(decodeURI(url)));
+    const paths = options.path.split('/');
+    const cluster = options.host + '-' + (paths.length ? paths[1] : '/');
+
     const oldURLs = await models.ClubCorpURL.find({ url: url });
     if (oldURLs.length) {
+        oldURLs[0].type = 'HTML';
+        oldURLs[0].cluster = cluster;
+        oldURLs[0].host = options.host;
+        oldURLs[0].path = options.path;
+        oldURLs[0].query = options.query;
+        oldURLs[0].updated = new Date();
+        oldURLs[0] = await oldURLs[0].save();
         return oldURLs[0];
     }
 
     const ccURL = new models.ClubCorpURL({
         url: url,
         type: 'HTML',
+        cluster: cluster,
+        host: options.host,
+        path: options.path,
+        query: options.query,
         created: new Date(),
         updated: new Date()
     })
@@ -26,6 +42,26 @@ async function getURL(url) {
     const urls = await models.ClubCorpURL.find({ url: url });
     return urls.length ? urls[0] : null;
 }
+async function getURLLookup(url) {
+    const urls = await models.URLLookup.find({ url: url });
+    return urls.length ? urls[0] : null;
+}
+async function createURLLookup(row){
+    let lookupURL = new models.URLLookup({
+        url: row[2],
+        page: row[1],
+        created: new Date(),
+        updated: new Date()
+    });
+    lookupURL = await lookupURL.save();
+    return lookupURL;
+}
+async function updateURLLookup(lookupURL, row){
+    lookupURL.page = row[1];
+    lookupURL.updated = new Date();
+    lookupURL = await lookupURL.save();
+    return lookupURL;
+}
 async function getURLEvents(dbURL) {
     const events = await models.ClubCorpEvent.find({ url: dbURL._id }).populate('url').sort([['created', -1]]);
     return events ? events : [];
@@ -40,7 +76,7 @@ const getDateWithOffset = (offset) => {
 }
 async function getURLRecentEvents(dbURL) {
     const todayDate = getDateWithOffset(0);
-    const events = await models.ClubCorpEvent.find({ url: dbURL._id, created: { $gte: todayDate} }).populate('url').sort([['created', -1]]);
+    const events = await models.ClubCorpEvent.find({ url: dbURL._id, created: { $gte: todayDate } }).populate('url').sort([['created', -1]]);
     return events ? events : [];
 }
 
@@ -81,3 +117,6 @@ module.exports.createURLEvent = createURLEvent;
 module.exports.getURLRecentEvents = getURLRecentEvents;
 module.exports.getURLEvents = getURLEvents;
 module.exports.getURL = getURL;
+module.exports.getURLLookup = getURLLookup;
+module.exports.createURLLookup = createURLLookup;
+module.exports.updateURLLookup = updateURLLookup;

@@ -2,6 +2,17 @@
 process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
 process.env["DEBUG"] = "follow-redirect";
 
+// Helpers (Prototypes)
+String.prototype.isClubCorpHost = function () {
+  return this.indexOf('clubcorp.com') !== -1;
+};
+String.prototype.isClubCorpWWWHost = function () {
+  return this.indexOf('www.clubcorp.com') !== -1;
+};
+String.prototype.isClubCorpClubHost = function () {
+  return this.indexOf('club.clubcorp.com') !== -1;
+};
+
 const fs = require('fs');
 const urlParser = require('url');
 const followRedirects = require('follow-redirects');
@@ -12,12 +23,12 @@ const urlStatusCode = require('url-status-code')
 const parse = require('csv-parse/lib/sync');
 const msg = require('./msg-helper'),
   dal = require('./dal')
-excelManager = require('./excel-manager');
+exportManager = require('./export-manager');
 
 const http = followRedirects.http;
 const https = followRedirects.https;
 
-const maxParallelReq = 20;
+const maxParallelReq = 10;
 const args = require("args-parser")(process.argv)
 
 const dataCSVFile = args.data;
@@ -60,7 +71,7 @@ const getURL = (urlStr) => {
   //decode URL first to handle already encoded URI
   const options = urlParser.parse(encodeURI(decodeURI(urlStr)));
   options.maxRedirects = 10;
-  options.timeout = 30000;
+  options.timeout = 10000;
   options.trackRedirects = true;
   options.followRedirects = true;
 
@@ -98,8 +109,8 @@ const getURL = (urlStr) => {
         }
 
 
-        const isSoft404 = $('body').html().toLowerCase().indexOf("can't be found") !== -1 ||
-          $('body').html().toLowerCase().indexOf("page not found") !== -1;
+        const isSoft404 = $('body').html().toLowerCase().indexOf("404") !== -1 && ($('body').html().toLowerCase().indexOf("can't be found") !== -1 ||
+          $('body').html().toLowerCase().indexOf("page not found") !== -1);
 
         const contentLength = response.headers['content-length'];
         result.canonicalURL = $("link[rel='canonical']").attr('href');
@@ -118,7 +129,7 @@ const getURL = (urlStr) => {
         result.longRedirect = result.redirects.length > 4 ? true : false;
         result.clupsNotMigrated = finalURL.indexOf('clup.') !== -1;
         result.wwwMigrated = finalURL.indexOf('www.') !== -1;
-        if ((options.host === 'club.clubcorp.com' || options.host.indexOf('club.com') !== -1) && finalURL.indexOf('/clubs/') === -1) {
+        if ((options.host.isClubCorpClubHost() || options.host.indexOf('club.com') !== -1) && finalURL.indexOf('/clubs/') === -1) {
           result.clubMigrated = false;
         }
 
@@ -192,20 +203,34 @@ const testFile = async (file) => {
     }));
   }
 };
-const getSortedStatusCodesBasedOnInput = async (urls) => {
+const getSortedFilteredStatusCodesBasedOnInput = async (urls) => {
   const sortedStatusCodes = [];
   for (const url of urls) {
     const dbURL = await dal.getURL(url[0]);
+    const lookup = await dal.getURLLookup(url[0]);
     const urlStatusCodes = await dal.getURLEvents(dbURL);
-    sortedStatusCodes.push(urlStatusCodes);
-  }
+    
+    const category = url.length > 0 && url[1] ? url[1] : 'normal';
 
+    const isClubCorpURL = dbURL.isClubCorpHost();
+    const isClubCorpPage = lookup ? lookup.isClubCorpPageHost() : true;
+
+    if(isClubCorpURL && isClubCorpPage){
+      for (const statusCode of urlStatusCodes) {
+        statusCode.category = category;
+        statusCode.page = lookup ? lookup : '';
+      }
+      sortedStatusCodes.push(urlStatusCodes);
+    }
+  }
   return sortedStatusCodes;
 };
+
+
 const exportFileDataToExcel = (file) => {
-  excelManager.init();
-  excelManager.writeData(file.statusCodes);
-  excelManager.flush(file.output);
+  exportManager.init();
+  exportManager.writeData(file.statusCodes);
+  exportManager.flush(file.output);
 };
 const start = async (done) => {
   const files = getData();
@@ -213,7 +238,10 @@ const start = async (done) => {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     await testFile(file);
-    file.statusCodes = await getSortedStatusCodesBasedOnInput(file.data);
+    msg.yellow('Preparing data to be written..');
+    file.statusCodes = await getSortedFilteredStatusCodesBasedOnInput(file.data);
+    msg.yellow('Data is prepared..');
+
     exportFileDataToExcel(file);
   }
 };
