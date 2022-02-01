@@ -175,10 +175,10 @@ module.exports.writeData = (rows) => {
       const lastRedirect = statusCode.redirects[statusCode.redirects.length - 1];
 
       let result = (statusCode.url.url.isClubCorpClubHost() || statusCode.url.url.isClubCorpWWWHost()) &&
-        (firstRedirect.status >= 500 && firstRedirect.status <= 510) ||
-        (firstRedirect.status >= 300 && firstRedirect.status <= 310);
+        ((firstRedirect.status >= 500 && firstRedirect.status <= 510) ||
+        (firstRedirect.status >= 300 && firstRedirect.status <= 310));
 
-      result = result && statusCode.redirect && statusCode.url.isClubCorpHost();
+      result = result && statusCode.redirect && lastRedirect.url.isClubCorpHost();
       result = result && (statusCode.page !== '' ? statusCode.page.page.isClubCorpWWWHost() : true);
 
       return result;
