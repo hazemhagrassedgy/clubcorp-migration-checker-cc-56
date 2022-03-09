@@ -112,6 +112,16 @@ async function createURLEvent(args) {
     }
     return event;
 }
+
+async function clearURLLookup() {
+    try {
+        await models.URLLookup.deleteMany({});
+        msg.green('Deleting old seed data');
+    }
+    catch (err) {
+        msg.red(err)
+    }
+}
 module.exports.createURLIfNotExists = createURLIfNotExists;
 module.exports.createURLEvent = createURLEvent;
 module.exports.getURLRecentEvents = getURLRecentEvents;
@@ -120,3 +130,4 @@ module.exports.getURL = getURL;
 module.exports.getURLLookup = getURLLookup;
 module.exports.createURLLookup = createURLLookup;
 module.exports.updateURLLookup = updateURLLookup;
+module.exports.clearURLLookup = clearURLLookup;

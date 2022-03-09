@@ -5,7 +5,7 @@
   "main": "run.js",
   "dependencies": {
     "args-parser": "^1.3.0",
-    "async": "^3.2.2",
+    "async": "^3.2.3",
     "async-series": "0.0.1",
     "chalk": "^4.1.2",
     "cheerio": "^1.0.0-rc.10",
@@ -14,13 +14,13 @@
     "excel4node": "^1.7.2",
     "file-contents": "^1.0.1",
     "follow-redirects": "^1.14.5",
-    "json2csv": "^5.0.6",
+    "json2csv": "^5.0.7",
     "mongoose": "^6.0.12",
+    "mongose": "^0.0.2-security",
     "path": "^0.12.7",
     "url-exists": "^1.0.3",
     "url-status-code": "^2.0.0"
   },
-  "devDependencies": {},
   "scripts": {
     "test": ""
   },

@@ -232,7 +232,7 @@ const exportFileDataToExcel = (file) => {
   exportManager.writeData(file.statusCodes);
   exportManager.flush(file.output);
 };
-const start = async (done) => {
+const start = async () => {
   const files = getData();
 
   for (let i = 0; i < files.length; i++) {
@@ -250,5 +250,5 @@ const start = async (done) => {
   await start();
 })().then(v => {
   msg.green('Finished..');
-  setTimeout(process.exit, 10000);
+  setTimeout(process.exit, 20000);
 });

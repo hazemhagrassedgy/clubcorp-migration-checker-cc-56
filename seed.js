@@ -54,6 +54,7 @@ const testFile = async (file) => {
 };
 
 const start = async (done) => {
+  await dal.clearURLLookup();
   const files = getSeedData();
 
   for (let i = 0; i < files.length; i++) {
